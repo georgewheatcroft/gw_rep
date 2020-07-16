@@ -1,0 +1,9 @@
+A tool to aid reporting (set up) generation using data from an excel file
+
+To run:
+
+go run . "path/to/file" (assuming you are in the same directory as these go files)
+
+Dependencies (must go get these):
+github.com/360EntSecGroup-Skylar/excelize
+github.com/tealeg/xlsx
