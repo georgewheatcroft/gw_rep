@@ -1,4 +1,4 @@
 # gw_rep
-Business & Marketing Automation and SysAdmin/DevOps
+Backend development and Sysadmin
 
-I enjoy making scripts and developing automation tools for business activities. I also have an interest in SysAdmin/DevOps
+This repo is just a general store of personal tools I have made, rather than a specific project 
