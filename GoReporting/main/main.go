@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 
@@ -14,11 +15,11 @@ var err error
 var excelFileName string = getFilePath() //e.g. go run . /example/file/path
 var row *xlsx.Row
 var cell *xlsx.Cell
-var dupCheckFailed string = "couldn't complete duplicate check due to failure"
-var extentColumnInt int = 25 //perhaps make this and the below var's a command line option later if greater flex. needed
+var extentColumnInt int = 26 //perhaps make this and the below var's a command line option later if greater flex. needed
 var bsName string = "BS"
 var plName string = "P&L"
 var outputFileName string = "Result.xlsx"
+var testingMode bool
 
 func main() {
 	var file *xlsx.File
@@ -29,19 +30,18 @@ func main() {
 
 	//shouldn't get to this point due to the above error handling, but just in case...
 	if excelFileName == "" {
-		fmt.Println("You need to specify a file name, e.g. go run .o /path/to/file")
-		os.Exit(1)
+		log.Fatal("You need to specify a file name, e.g. go run . /path/to/file")
 	}
-	//are the sheets present?
-	presence()
+
+	sheetPresence()
 
 	//make file and relevant sheets
 	file = xlsx.NewFile()
 	if plSheet, err = file.AddSheet(plName); err != nil {
-		fmt.Printf(err.Error())
+		log.Fatal(err.Error())
 	}
 	if bsSheet, err = file.AddSheet(bsName); err != nil {
-		fmt.Printf(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	//add rows created in functions
@@ -53,29 +53,23 @@ func main() {
 
 	//Save or Die Hard
 	if err := file.Save(outputFileName); err != nil {
-		fmt.Printf(err.Error())
-		os.Exit(99)
+		log.Fatal(err.Error())
 	}
 	//check if duplicates
 	finishedExe, err := excelize.OpenFile(outputFileName)
 	if err != nil {
-		fmt.Printf(err.Error())
-		fmt.Println(dupCheckFailed)
-		os.Exit(1)
+		log.Fatal(err.Error())
 	}
 
 	sliceOfSheets := []string{plName, bsName} //maybe use this further up
-	//sliceOfSheets := []string{plName}
-	for _, sheetName := range sliceOfSheets { //for each sheet name
 
+	for _, sheetName := range sliceOfSheets { //for each sheet name
 		inputSlice, err := finishedExe.GetRows(sheetName)
 		if err != nil {
-			fmt.Printf(err.Error())
-			fmt.Println(dupCheckFailed)
-			os.Exit(2)
+			log.Fatal(err.Error())
 		}
-
 		duplicateCheckColA(inputSlice, sheetName) //should be able to find any duplicates and highlight in red
+		cleanSheet(inputSlice, sheetName, outputFileName)
 	}
 
 }
@@ -84,65 +78,58 @@ func rowFactory(sheetName string) [][]string {
 	/*get rows for relevant sheet, sends off for formatting/changing, returns*/
 	firstExe, err := excelize.OpenFile(excelFileName) //1st excel file gen
 	if err != nil {
-		fmt.Printf(err.Error())
-		os.Exit(2)
+		log.Fatal(err.Error())
 	}
 
 	preSlice, err := firstExe.GetRows(sheetName) //slice of initial sheet assignment
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(2)
+		log.Fatal(err.Error())
 	}
 
 	if err := firstExe.Save(); err != nil { //save 1st excel file as this stops panic from trying to open file in extendSheet. one liner fine as err just needed for scope of if
-		fmt.Println(err.Error())
-		os.Exit(2)
+		log.Fatal(err.Error())
 	}
-	//extends outer slice len (the row text slice) for all outer slices to stop later funcs getting panic from acting on
+	//just a hack to get around a library inadequacy that extends outer slice len (the row text slice) for all outer slices to stop later funcs getting panic from acting on
 	//short outer slices
 	extendSheet(preSlice, sheetName) ///currently leaves 1's along column z in original doc, but useful for checking if this tool has been ran on input docs in future, so leave for now
 
 	secondExe, err := excelize.OpenFile(excelFileName)
 	if err != nil { //now open the file again for second time (changes should be made)
-		fmt.Println(err.Error())
-		os.Exit(2)
+		log.Fatal(err.Error())
 	}
 
 	shortSlice, err := secondExe.GetRows(sheetName)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(2)
+		log.Fatal(err.Error())
 	}
 	if err := secondExe.Save(); err != nil { //save 1st excel file as this stops panic from trying to open file in extendSheet. one liner fine as err just needed for scope of if
-		fmt.Println(err.Error())
-		os.Exit(2)
+		log.Fatal(err.Error())
 	}
 
 	if sheetName == plName { //!! currently only the P&L should have formulas, if need to do this for BS/other sheets, expand this or remove this if
 		shortSlice = getFormulas(shortSlice, sheetName, secondExe)
 	}
 
-	//send off to the madness of rowMagic func
-	shortSlice = rowMagic(shortSlice) //perhaps some error handling at function call here when more time
+	//row magic attempts to set up rows even without there being formulas (it attempts to guess based on format due to lack of reliable data)
+	shortSlice = rowMagic(shortSlice)
 
 	return shortSlice
 }
 
 func getFilePath() string {
+	var myInputFile string
 	if len(os.Args) > 1 {
-		myInputFile := os.Args[1] //as arg 0 = go file, arg 1 is the actual argument passed in after go run .
-		return myInputFile
+		myInputFile = os.Args[1] //as arg 0 = go file, arg 1 is the actual argument passed in after go run .
+	} else {
+		log.Fatal("You need to specify a file name, e.g. main.go /path/to/file")
 	}
-	fmt.Println("You need to specify a file name, e.g. main.go /path/to/file")
-	os.Exit(1)
-	return "" //shouldn't ever come to this - but handling in main ensures that this triggers exit if passed
+	return myInputFile
 }
 
-func presence() {
+func sheetPresence() {
 	xlFile, err := xlsx.OpenFile(excelFileName)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(2)
+		log.Fatal(err.Error())
 	}
 	var bsPresence bool
 	var plPresence bool
@@ -157,14 +144,12 @@ func presence() {
 		}
 	}
 	if bsPresence != true || plPresence != true {
-		fmt.Printf("couldn't find both the P&L and BS sheets")
-		fmt.Println(err.Error())
-		os.Exit(3)
+		log.Fatal("couldn't find both the P&L and BS sheets")
 	}
 }
 
 func outputRows(sheetData [][]string, outputSheetName *xlsx.Sheet) {
-
+	/*finally, print the rows to the output sheet*/
 	for _, cellStringSlice := range sheetData {
 		row = outputSheetName.AddRow()
 		for _, rVal := range cellStringSlice {
@@ -172,7 +157,6 @@ func outputRows(sheetData [][]string, outputSheetName *xlsx.Sheet) {
 			cell.Value = (rVal)
 		}
 	}
-
 }
 
 func getFormulas(inputShortSlice [][]string, sheetName string, secondExe *excelize.File) [][]string {
@@ -187,7 +171,7 @@ func getFormulas(inputShortSlice [][]string, sheetName string, secondExe *exceli
 
 					strFormula, err := secondExe.GetCellFormula(sheetName, cellRef)
 					if err != nil {
-						fmt.Println(err.Error())
+						log.Fatal(err.Error())
 					}
 					inputShortSlice[rowNumber][rowColumn+1] = strFormula //set formula in cell - row magic picks this up
 				}

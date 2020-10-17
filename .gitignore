@@ -1,0 +1,4 @@
+GoReporting/*.xlsx
+GoReporting/.vscode/*
+GoReporting/*/*.swp
+GoReporting/main/*.xlsx

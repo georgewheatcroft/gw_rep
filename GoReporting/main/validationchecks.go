@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"log"
 	"strconv"
 
 	"github.com/360EntSecGroup-Skylar/excelize"
@@ -41,17 +41,13 @@ func highlightColADuplicates(dupCellSlice []int, sheetName string) {
 	var cellRefStr string
 	highlightExe, err := excelize.OpenFile(outputFileName)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println(dupCheckFailed)
-		os.Exit(4)
+		log.Fatal(err)
 	}
 	if len(dupCellSlice) > 1 && sheetName != "" { //just to try and stop a panic from occuring if dodgy data passed
 		//should give red colour fill if  #FF0000 or blue if #E0EBF5. see http://dmcritchie.mvps.org/excel/colors.htm (no l at end)
 		style, err := highlightExe.NewStyle(`{"fill":{"type":"gradient","color":["#FF0000","#FF0000"],"shading":1}}`)
 		if err != nil {
-			fmt.Println(err.Error())
-			fmt.Println(dupCheckFailed)
-			os.Exit(5)
+			log.Fatal(err.Error())
 		}
 
 		for _, rowNum := range dupCellSlice {
@@ -60,16 +56,12 @@ func highlightColADuplicates(dupCellSlice []int, sheetName string) {
 			cellRefStr = "A" + rowNumStr
 			err := highlightExe.SetCellStyle(sheetName, cellRefStr, cellRefStr, style)
 			if err != nil {
-				fmt.Println(err.Error())
-				fmt.Println(dupCheckFailed)
-				os.Exit(6)
+				log.Fatal(err.Error())
 			}
 			fmt.Println("did highlighting")
 			errSav := highlightExe.Save()
 			if errSav != nil { //save output excel file as this stops panic from trying to open file in next iteration and ensures changes kept
-				fmt.Println(errSav)
-				fmt.Println(dupCheckFailed)
-				os.Exit(999) //die very badly if can't be done!
+				log.Fatal(errSav)
 			}
 			fmt.Println("did saving")
 		}
