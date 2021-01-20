@@ -7,6 +7,22 @@ if empty(glob('~/.vim/autoload/plug.vim'))
     \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
   autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
 endif
+"""""""""""""""""""""""""""""""""""""GW vim keybinding changes##
+"stop autocomplete with C-p                                 #
+"inoremap <c-p> <nop>                                      
+set complete=
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""Special changes to accomodate the plugins
+"cause new line after {<enter>}
+inoremap {<CR> {<CR>}<Esc>O
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+"""""""""""""""""""""""""""""""""""""""""set some good general vim settings
+set ai "auto indenting"
+syntax on "syntax ery file 
+filetype on "detect filetype
+filetype indent on "should refer to file for indent where poss
+set tabstop=4
 " Specify a directory for plugins
 call plug#begin('~/.vim/plugged')
  Plug 'scrooloose/nerdtree'
@@ -18,7 +34,6 @@ call plug#begin('~/.vim/plugged')
 Plug 'crusoexia/vim-monokai' 
 "Plug 'lsdr/monokai'
 "Plug 'ErichDonGubler/vim-sublime-monokai'
-syntax on
 "Plug 'neoclide/coc.nvim', {'do': 'yarn install --frozen-lockfile'} --made
 "things slow
  " Airline
@@ -29,10 +44,14 @@ Plug 'Yggdroot/indentLine'
  " Code and files fuzzy finder
  Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
  Plug 'junegunn/fzf.vim'
+ "autocompleter
+ Plug 'ycm-core/YouCompleteMe'
  Plug 'roxma/nvim-yarp'
  Plug 'roxma/vim-hug-neovim-rpc'
 " Automatically close parenthesis, etc
  Plug 'Townk/vim-autoclose'
+" Highlight cursor when its travelled a large distance
+Plug 'inside/vim-search-pulse'
 " language packs
 Plug 'fatih/vim-go', { 'for': 'go', 'do': ':GoInstallBinaries' } 
 Plug 'itchyny/lightline.vim'
@@ -55,12 +74,33 @@ function! LightlineReadonly()
 	  return &readonly && &filetype !=# 'help' ? 'RO' : ''
   endfunction
 
+"let g:vim_search_pulse_mode = 'cursor_line' "shows up as cursor line
+let g:vim_search_pulse_mode = 'pattern' "or let it do it as a pattern
+let g:vim_search_pulse_disable_auto_mappings = 1
 "set line numbers
-set nu
+"set nu
 "editor colourscheme
 set laststatus=2
+"" try setting this to see if it stops that massive delay when switch from
+"" insert -> normal
+set ttimeout ttimeoutlen=20
+
+"" try setting this to see if it will stop that delay in closing ycm window
+"" even when I hit ctl+[ 
+"set timeout timeoutlen=2000 it doesn't....
+let g:ycm_autoclose_preview_window_after_insertion = 1
+let g:ycm_key_list_stop_completion = ['<C-[>'] "previousuly = ['C-y']
+""this actually fixes the whole issue 
+let g:AutoClosePumvisible = {"ENTER": "", "ESC": ""}
+
 set background=dark
 syntax on
+
+"have terminal split below
+set splitbelow 
+"set termwinsize=5x200
+set termwinsize=6x200
+
 " use 256 colors when possible
 
  if has('gui_running') || using_neovim || (&term =~? 'mlterm\|xterm\|xterm-256\|screen-256')
